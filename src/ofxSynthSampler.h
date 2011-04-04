@@ -35,10 +35,7 @@ class ofxSynthSample  {
 
 		// read a wav file into this class
 		bool read();
-		
-		double play4(double frequency, double start, double end);
-		double play(double frequency, double start, double end);
-		
+				
 		// return a printable summary of the wav file
 		char *getSummary();
 		void				setSampleRate(int rate);
@@ -54,13 +51,15 @@ class ofxSynthSample  {
 		short 	myBitsPerSample;
 		int		myDataSize;
 		double	speed;
-		double	output;
 	
 };
 
 class ofxSynthSampler : public ofxSynth {
 	public:
-		ofxSynthSampler()	{direction=1;inPoint=0.0;outPoint=1.0; sampleLoaded=false; currentFrequency=1.0;};
+		ofxSynthSampler()	{
+			direction=1;inPoint=0.0;outPoint=1.0;playing=false;
+			sampleLoaded=false; currentFrequency=1.0; loopType=0;
+		};
 		virtual string		getName() { return "ofxSynthSampler"; }
 
 		void				loadFile(string file);
@@ -71,13 +70,17 @@ class ofxSynthSampler : public ofxSynth {
 		void				setDirectionForward(){direction = 1;};
 		void				setDirectionBackward(){direction = -1;};
 		void				setLoopPoints(float i, float o);
-
+		void				setLoopType(int _loopType); // 0 loop 1 one shot
+	
 		void				setSampleRate(int rate);
 		virtual void		audioRequested( float* buffer, int numFrames, int numChannels );
+		double				play4(double frequency, double start, double end);
 
 	private:
-		int					sampleRate, direction;
+		int					sampleRate, direction, loopType;
 		float				inPoint, outPoint;
 		ofxSynthSample		sample;
-		bool				sampleLoaded;
+		bool				sampleLoaded, playing;
+		double				output; // used by the playback system
+
 };

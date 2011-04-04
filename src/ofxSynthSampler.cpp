@@ -10,17 +10,22 @@ void ofxSynthSampler::setLoopPoints(float i, float o){
 }
 void ofxSynthSampler::trigger(){
 	sample.position = inPoint*sample.length;
+	playing = true;
 }
 void ofxSynthSampler::audioRequested( float* buffer, int numFrames, int numChannels ){
 	sample.setSampleRate(sampleRate);
-	// this really doesn't seem right
-	// will only be loading into the left channel
+	// as per the faster processing done in the main synth
+	float currValue;
+	float *buffer_ptr = buffer;
 	for (int i = 0; i < numFrames; i++){
-		if(sampleLoaded){
-			buffer[i*numChannels] = sample.play4(currentFrequency, inPoint*sample.length, outPoint*sample.length);
+		if(sampleLoaded && playing){
+			currValue = play4(currentFrequency, inPoint*sample.length, outPoint*sample.length);
 		}else {
-			buffer[i*numChannels] = 0;
+			currValue = 0;
 		}
+		for (int j=0; j<numChannels; j++) {
+			(*buffer_ptr++) = currValue;
+		}		
 	}
 }
 void ofxSynthSampler::setFrequencyMidiNote(float note){
@@ -35,6 +40,89 @@ void ofxSynthSampler::loadFile(string file){
 	sampleLoaded = result;
 	printf("sampleload test: %i\n",result);
 	printf("Summary:\n%s", sample.getSummary());
+}
+void ofxSynthSampler::setLoopType(int _loopType){
+	loopType = _loopType;
+}
+
+//better cubic inerpolation. Cobbled together from various (pd externals, yehar, other places).
+double ofxSynthSampler::play4(double frequency, double start, double end) {
+	double remainder;
+	double a,b,c,d,a1,a2,a3;
+	short* buffer = (short*)sample.myData;
+	if (frequency >0.) {
+		if (sample.position<start) {
+			sample.position=start;
+		}
+		if ( sample.position >= end ){
+			if (loopType == 1) {
+				playing = false;
+			}
+			sample.position = start;
+		}
+		sample.position += frequency*2;
+		remainder = sample.position - floor(sample.position);
+		if (sample.position>0) {
+			a=buffer[(int)(floor(sample.position))-1];
+			
+		} else {
+			a=buffer[0];
+		}
+		
+		b=buffer[(long) sample.position];
+		if (sample.position<end-2) {
+			c=buffer[(long) sample.position+1];
+			
+		} else {
+			c=buffer[0];
+			
+		}
+		if (sample.position<end-3) {
+			d=buffer[(long) sample.position+2];
+			
+		} else {
+			d=buffer[0];
+		}
+		a1 = 0.5f * (c - a);
+		a2 = a - 2.5 * b + 2.f * c - 0.5f * d;
+		a3 = 0.5f * (d - a) + 1.5f * (b - c);
+		output = (double) (((a3 * remainder + a2) * remainder + a1) * remainder + b) / 32767;
+		
+	} else {
+		frequency=frequency-(frequency+frequency);
+		if ( sample.position <= start ) sample.position = end;
+		sample.position -= frequency*2;
+		remainder = sample.position - floor(sample.position);
+		if (sample.position>start && sample.position < end-1) {
+			a=buffer[(long) sample.position+1];
+			
+		} else {
+			a=buffer[0];
+			
+		}
+		
+		b=buffer[(long) sample.position];
+		if (sample.position>start) {
+			c=buffer[(long) sample.position-1];
+			
+		} else {
+			c=buffer[0];
+			
+		}
+		if (sample.position>start+1) {
+			d=buffer[(long) sample.position-2];
+			
+		} else {
+			d=buffer[0];
+		}
+		a1 = 0.5f * (c - a);
+		a2 = a - 2.5 * b + 2.f * c - 0.5f * d;
+		a3 = 0.5f * (d - a) + 1.5f * (b - c);
+		output = (double) (((a3 * remainder + a2) * -remainder + a1) * -remainder + b) / 32767;
+		
+	}
+	
+	return(output);
 }
 
 /* ============================ */
@@ -133,140 +221,7 @@ char * ofxSynthSample::getSummary()
 void ofxSynthSample::getLength() {
 	length=myDataSize*0.5;	
 }
-//better cubic inerpolation. Cobbled together from various (pd externals, yehar, other places).
-//better cubic inerpolation. Cobbled together from various (pd externals, yehar, other places).
-double ofxSynthSample::play4(double frequency, double start, double end) {
-	double remainder;
-	double a,b,c,d,a1,a2,a3;
-	short* buffer = (short*)myData;
-	if (frequency >0.) {
-		if (position<start) {
-			position=start;
-		}
-		if ( position >= end ) position = start;
-		position += frequency*2;
-		remainder = position - floor(position);
-		if (position>0) {
-			a=buffer[(int)(floor(position))-1];
 
-		} else {
-			a=buffer[0];
-
-		}
-
-		b=buffer[(long) position];
-		if (position<end-2) {
-			c=buffer[(long) position+1];
-
-		} else {
-			c=buffer[0];
-
-		}
-		if (position<end-3) {
-			d=buffer[(long) position+2];
-
-		} else {
-			d=buffer[0];
-		}
-		a1 = 0.5f * (c - a);
-		a2 = a - 2.5 * b + 2.f * c - 0.5f * d;
-		a3 = 0.5f * (d - a) + 1.5f * (b - c);
-		output = (double) (((a3 * remainder + a2) * remainder + a1) * remainder + b) / 32767;
-
-	} else {
-		frequency=frequency-(frequency+frequency);
-		if ( position <= start ) position = end;
-		position -= frequency*2;
-		remainder = position - floor(position);
-		if (position>start && position < end-1) {
-			a=buffer[(long) position+1];
-
-		} else {
-			a=buffer[0];
-
-		}
-
-		b=buffer[(long) position];
-		if (position>start) {
-			c=buffer[(long) position-1];
-
-		} else {
-			c=buffer[0];
-
-		}
-		if (position>start+1) {
-			d=buffer[(long) position-2];
-
-		} else {
-			d=buffer[0];
-		}
-		a1 = 0.5f * (c - a);
-		a2 = a - 2.5 * b + 2.f * c - 0.5f * d;
-		a3 = 0.5f * (d - a) + 1.5f * (b - c);
-		output = (double) (((a3 * remainder + a2) * -remainder + a1) * -remainder + b) / 32767;
-
-	}
-
-	return(output);
-}
-double ofxSynthSample::play(double frequency, double start, double end) {
-	double remainder;
-//	long length=myDataSize;
-//	printf("position: %f\n", position);
-	if (end>=length) end=length-1;
-	long a,b;
-	short* buffer = (short *)myData;
-	if (frequency >0.) {
-		if (position<start) {
-			position=start;
-		}
-		
-		if ( position >= end ) position = start;
-		position += ((end-start)/(sampleRate/(frequency)));
-		remainder = position - floor(position);
-		long pos = floor(position);
-		if (pos+1<length) {
-			a=pos+1;
-
-		}
-		else {
-			a=pos-1;
-		}
-		if (pos+2<length) {
-			b=pos+2;
-		}
-		else {
-			b=length-1;
-		}
-	
-		output = (double) ((1-remainder) * buffer[a] +
-							   remainder * buffer[b])/32767.0;//linear interpolation
-		// output = ofRandom(-1.0, 1.0);
-	} else {
-		frequency=frequency-(frequency+frequency);
-		if ( position <= start ) position = end;
-		position -= ((end-start)/(sampleRate/(frequency)));
-		remainder = position - floor(position);
-		long pos = floor(position);
-			if (pos-1>=0) {
-				a=pos-1;
-			}
-			else {
-				a=0;
-			}
-		if (pos-2>=0) {
-		b=pos-2;
-		}
-		else {
-			b=0;
-		}		
-		output = (double) ((-1-remainder) * buffer[a] +
-						   remainder * buffer[b])/32767.0;//linear interpolation
-		
-	}
-	
-	return(output);
-}
 void ofxSynthSample::setSampleRate(int rate){
 	sampleRate = rate;
 }
