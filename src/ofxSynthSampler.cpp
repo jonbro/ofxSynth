@@ -60,7 +60,7 @@ double ofxSynthSampler::play4(double frequency, double start, double end) {
 			}
 			sample.position = start;
 		}
-		sample.position += frequency*2;
+		sample.position += frequency;
 		remainder = sample.position - floor(sample.position);
 		if (sample.position>0) {
 			a=buffer[(int)(floor(sample.position))-1];
@@ -91,7 +91,7 @@ double ofxSynthSampler::play4(double frequency, double start, double end) {
 	} else {
 		frequency=frequency-(frequency+frequency);
 		if ( sample.position <= start ) sample.position = end;
-		sample.position -= frequency*2;
+		sample.position -= frequency;
 		remainder = sample.position - floor(sample.position);
 		if (sample.position>start && sample.position < end-1) {
 			a=buffer[(long) sample.position+1];
@@ -163,25 +163,22 @@ bool ofxSynthSample::read(){
 		inFile.read( (char*) &myBlockAlign, sizeof(short) ); // read the blockalign
 		
 		inFile.read( (char*) &myBitsPerSample, sizeof(short) ); // read the bitspersample
-		
 		//ignore any extra chunks
 		char chunkID[4]="";
 		int filePos = 36;
 		bool found = false;
 		while(!found && !inFile.eof()) {
-			cout << "count" << endl;
 			inFile.seekg(filePos, ios::beg);
 			inFile.read((char*) &chunkID, sizeof(char) * 4);
 			inFile.seekg(filePos + 4, ios::beg);
 			inFile.read( (char*) &myDataSize, sizeof(int) ); // read the size of the data
 			filePos += 8;
 			if (chunkID[0] == 'd' && chunkID[1] == 'a' && chunkID[2] == 't' && chunkID[3] == 'a') {
-				printf("found at: %i\n", filePos);
 				found = true;
 			}else{
-				printf("chunkid: %s\n", chunkID);
 				filePos += myDataSize;
 			}
+			printf("filePos: %i\n", filePos);
 		}
 		// clear the error bits that were set,
 		// so tha we can continue to perform operations on the file

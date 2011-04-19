@@ -57,7 +57,7 @@ class ofxSynthSample  {
 class ofxSynthSampler : public ofxSynth {
 	public:
 		ofxSynthSampler()	{
-			direction=1;inPoint=0.0;outPoint=1.0;playing=false;
+			direction=1; inPoint=0.0;outPoint=1.0;playing=false;
 			sampleLoaded=false; currentFrequency=1.0; loopType=0;
 		};
 		virtual string		getName() { return "ofxSynthSampler"; }
