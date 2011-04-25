@@ -75,12 +75,13 @@ class ofxSynthSampler : public ofxSynth {
 		void				setSampleRate(int rate);
 		virtual void		audioRequested( float* buffer, int numFrames, int numChannels );
 		double				play4(double frequency, double start, double end);
+		void				play(float frequency, float start, float end, float &fill);
 
 	private:
 		int					sampleRate, direction, loopType;
-		float				inPoint, outPoint;
+		float				inPoint, outPoint, inSample, outSample;
 		ofxSynthSample		sample;
 		bool				sampleLoaded, playing;
-		double				output; // used by the playback system
+		float				output; // used by the playback system
 
 };

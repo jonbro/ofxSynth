@@ -7,6 +7,8 @@ void ofxSynthSampler::setSampleRate( int rate )
 void ofxSynthSampler::setLoopPoints(float i, float o){
 	inPoint=fmax(0, i);
 	outPoint=fmin(1, o);
+	inSample = inPoint*sample.length;
+	outSample = outPoint*sample.length;
 }
 void ofxSynthSampler::trigger(){
 	sample.position = inPoint*sample.length;
@@ -19,7 +21,7 @@ void ofxSynthSampler::audioRequested( float* buffer, int numFrames, int numChann
 	float *buffer_ptr = buffer;
 	for (int i = 0; i < numFrames; i++){
 		if(sampleLoaded && playing){
-			currValue = play4(currentFrequency, inPoint*sample.length, outPoint*sample.length);
+			play(currentFrequency, inSample, outSample, currValue);
 		}else {
 			currValue = 0;
 		}
@@ -30,7 +32,6 @@ void ofxSynthSampler::audioRequested( float* buffer, int numFrames, int numChann
 }
 void ofxSynthSampler::setFrequencyMidiNote(float note){
 	currentFrequency = pow(2.0, (note-60.0)/12.0f);
-	
 }
 void ofxSynthSampler::setFrequencySyncToLength(int length){
 	currentFrequency = sample.length/(float)length;
@@ -40,6 +41,7 @@ void ofxSynthSampler::loadFile(string file){
 	sampleLoaded = result;
 	printf("sampleload test: %i\n",result);
 	printf("Summary:\n%s", sample.getSummary());
+	setLoopPoints(0, 1);
 }
 void ofxSynthSampler::setLoopType(int _loopType){
 	loopType = _loopType;
@@ -123,6 +125,67 @@ double ofxSynthSampler::play4(double frequency, double start, double end) {
 	}
 	
 	return(output);
+}
+void ofxSynthSampler::play(float frequency, float start, float end, float &fill) {
+	double remainder;
+	// not sure why I was calculating this every loop, seems unnecessary
+	// if (end>=sample.length) end=sample.length-1;
+	long a,b;
+	short* buffer = (short *)sample.myData;
+	if (frequency >0.) {
+		if (sample.position<start) {
+			sample.position=start;
+		}
+		
+		if ( sample.position >= end ){
+			if (loopType == 1) {
+				playing = false;
+			}
+			sample.position = start;
+		}
+		sample.position += frequency;
+		int pos = sample.position; // used to do this with floor, going to try it with a simple cast for speed
+		remainder = sample.position - pos;
+		if (pos+1<sample.length) {
+			a=pos+1;
+		}
+		else {
+			a=pos-1;
+		}
+		if (pos+2<sample.length) {
+			b=pos+2;
+		}
+		else {
+			b=sample.length-1;
+		}
+		
+		fill = ((1-remainder) * buffer[a] +
+						   remainder * buffer[b])/32767.0;//linear interpolation
+		// output = ofRandom(-1.0, 1.0);
+	} else {
+		frequency=frequency-(frequency+frequency);
+		if ( sample.position <= start ) sample.position = end;
+		sample.position -= frequency;
+		remainder = sample.position - floor(sample.position);
+		long pos = floor(sample.position);
+		if (pos-1>=0) {
+			a=pos-1;
+		}
+		else {
+			a=0;
+		}
+		if (pos-2>=0) {
+			b=pos-2;
+		}
+		else {
+			b=0;
+		}		
+		fill = (double) ((-1-remainder) * buffer[a] +
+						   remainder * buffer[b])/32767.0;//linear interpolation
+		
+	}
+	
+	//return(output);
 }
 
 /* ============================ */
